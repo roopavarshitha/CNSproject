@@ -1,5 +1,4 @@
 // Import necessary modules
-const Web3 = require('web3'); 
 const express = require('express');
 const { create } = require('ipfs-http-client');
 const multer = require('multer');
@@ -14,55 +13,59 @@ dotenv.config();
 // Initialize Express app
 const app = express();
 
-// Enable CORS to allow requests from frontend
-app.use(cors());
+// Enable CORS with dynamic origin handling
+app.use(cors({
+  origin: (origin, callback) => {
+    const allowedOrigins = ['http://localhost:5173', 'https://your-frontend-domain.com'];
+    if (allowedOrigins.includes(origin) || !origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+}));
 
 // Parse incoming JSON requests
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// IPFS client setup (connect to your IPFS node, add URL to .env for security)
+// IPFS client setup (connect to IPFS node using URL from environment variables)
 const ipfs = create({ url: process.env.IPFS_API_URL });
 
-// Set up routes for file uploads and identity verification
-app.use('/api/upload', fileUploadRoutes);
-app.use('/api/identity', identityRoutes);
-
-
-// File upload handling using multer
+// Multer configuration for file uploads
 const upload = multer({ storage: multer.memoryStorage() });
 
 // File upload route for handling file upload to IPFS
-app.post('/upload', upload.single('file'), async (req, res) => {
+app.post('upload-aadhaar', upload.single('file'), async (req, res) => {
   try {
-    // Ensure a file was uploaded
     if (!req.file) {
-      return res.status(400).send('No file uploaded.');
+      return res.status(400).json({ error: 'No file uploaded.' });
     }
 
     // Add file to IPFS
     const added = await ipfs.add(req.file.buffer);
-
-    // Respond with IPFS hash of the uploaded file
     res.json({ ipfsHash: added.path });
   } catch (err) {
     console.error('Error uploading file:', err);
-    res.status(500).send('Error uploading file to IPFS');
+    res.status(500).json({ error: 'Error uploading file to IPFS' });
   }
 });
 
-// Example identity verification route (can be expanded)
+// Identity verification route
 app.post('/verify-identity', (req, res) => {
   const { aadharNumber, name, dateOfBirth } = req.body;
 
-  // Implement logic to verify identity, such as checking database or IPFS
   if (aadharNumber && name && dateOfBirth) {
-    // Dummy verification
+    // Dummy verification logic
     res.status(200).json({ message: 'Identity verified successfully!' });
   } else {
     res.status(400).json({ message: 'Identity verification failed.' });
   }
 });
+
+// Use external route handlers for modularity
+app.use('/api/upload-aadhaar', fileUploadRoutes);
+app.use('/api/identity', identityRoutes);
 
 // Start the server
 const PORT = process.env.PORT || 5000;

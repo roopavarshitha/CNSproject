@@ -3,6 +3,7 @@ pragma solidity 0.8.18;
 
 import "../EnhancedDataRequestContract.sol";
 import "../Identity.sol";
+import "forge-std/console.sol";
 
 contract DeployContracts {
     EnhancedDataRequestContract public dataRequestContract;
